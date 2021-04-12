@@ -361,21 +361,22 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
     ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (Teff);
     
     if (T < bm_temp){
+      ETIM_melt.T_melt = 0.;
+      ETIM_melt.I_melt = 0.;
+      ETIM_melt.c_melt = 0.;
       ETIM_melt.ITM_melt = 0.;
     }
     else{
-      ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a*(1. - albedo) * q_insol + itm_c + itm_lambda * (Teff ));
+      ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol + itm_c + itm_lambda * (Teff));
     }
   }
   else{
-    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a*(1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15 ));
-    ETIM_melt.T_melt = dt_series  * quotient_delta_t / (rho_w * L_m) * itm_lambda * (T - 273.15);
-
+    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15));
+    ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (T - 273.15);
   }
   
-  ETIM_melt.I_melt = dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol) * quotient_delta_t;
-  ETIM_melt.c_melt = dt_series / (rho_w * L_m) * itm_c * quotient_delta_t;
-
+  ETIM_melt.I_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol);
+  ETIM_melt.c_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_c;
 
 
   return ETIM_melt;
