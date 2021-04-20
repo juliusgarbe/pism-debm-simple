@@ -305,8 +305,8 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
 
   Melt ETIM_melt;
 
-  const double rho_w = 1e3;    // mass density of water //FIXME in config
-  const double L_m = 3.34e5;      // latent heat of ice melting //FIXME in config
+  const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water //default 1000 kg m-3
+  const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting //default 3.34e5 Joule / kg
   const double z = surface_elevation;               // surface elevation 
   const double tau_a = 0.65 +  0.000032 * z;  // transmissivity of the atmosphere, linear fit, plug in values //FIXME parameters in config
   const double itm_c = m_config->get_number("surface.itm.itm_c");
