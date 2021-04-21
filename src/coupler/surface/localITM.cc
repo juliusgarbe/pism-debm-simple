@@ -102,15 +102,15 @@ double ITMMassBalance::CalovGreveIntegrand(double sigma, double TacC) {
 
 double ITMMassBalance::get_albedo_pdd(double T, double S,  int mask_value, bool print){
   double albedo = 0. ;
-  double max = 0.78; //m_config->get_number("surface.itm.max_albedo");
-  double min = 0.47; //m_config->get_number("surface.itm.min_albedo");
-  double slope = -0.037; // m_config->get_number("surface.itm.albedo_slope");
+  const double albedo_max = 0.78; //m_config->get_number("surface.itm.max_albedo");
+  const double albedo_min = 0.47; //m_config->get_number("surface.itm.min_albedo");
+  const double albedo_slope = -0.037; // m_config->get_number("surface.itm.albedo_slope");
   double Teff = 0;
   if (mask_value == 2 || mask_value == 3){ // mask value for grounded or floating ice
       Teff = CalovGreveIntegrand(S, T - pdd_threshold_temp);
-      albedo = max + slope * Teff;
-      if (albedo < min ){
-        albedo = min; 
+      albedo = albedo_max + albedo_slope * Teff;
+      if (albedo < albedo_min ){
+        albedo = albedo_min; 
       }
   }
 
@@ -178,9 +178,9 @@ double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtser
   const double albedo_ocean = m_config->get_number("surface.itm.albedo_ocean"); // 0.1;
   // melt has a unit of meters ice equivalent
   // dtseries has a unit of seconds
-  double intersection = m_config->get_number("surface.itm.albedo_snow");//0.82; 
-  double slope = m_config->get_number("surface.itm.albedo_slope"); //-790; 
-  double albedo_ice = m_config->get_number("surface.itm.albedo_ice");
+  const double albedo_intercept = m_config->get_number("surface.itm.albedo_snow");//0.82; 
+  const double albedo_slope = m_config->get_number("surface.itm.albedo_slope"); //-790; 
+  const double albedo_ice = m_config->get_number("surface.itm.albedo_ice");
 
   if (mask_value == 4){ // mask value for ice free ocean
       albedo = albedo_ocean;
@@ -189,7 +189,7 @@ double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtser
       albedo =  albedo_land;
   }
   else {
-      albedo = intersection + slope * melt * ice_density / (dtseries); //check if this is fine. 
+      albedo = albedo_intercept + albedo_slope * melt * ice_density / (dtseries); //check if this is fine. 
       if (albedo < albedo_ice){
         albedo = albedo_ice; //0.47;
       }
@@ -235,15 +235,16 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ITM_melt(
 
   const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water //default 1000 kg m-3
   const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting //default 3.34e5 Joule / kg
-  double z = surface_elevation;               // surface elevation in meters
-  double tau_a = 0.65 +  0.000032 * z;  // transmissivity of the atmosphere, linear fit, plug in values //FIXME parameters in config
+  const double tau_intercept = m_config->get_number("surface.itm.transmissivity_intercept");   // intercept of atmospheric transmissivity linear fit
+  const double tau_slope = m_config->get_number("surface.itm.transmissivity_slope");   // slope of atmospheric transmissivity linear fit
   const double itm_c = m_config->get_number("surface.itm.itm_c");
   const double itm_lambda = m_config->get_number("surface.itm.itm_lambda");
   const double bm_temp    = m_config->get_number("surface.itm.background_melting_temp");
   // if background melting is true, use effective pdd temperatures and do not allow melting below background meltin temp. 
   const bool background_melting = m_config->get_flag("surface.itm.background_melting");
 
-
+  double z = surface_elevation;               // surface elevation in meters
+  double tau = tau_intercept + tau_slope * z;
 
   assert(dt_series > 0.0);
 
@@ -272,18 +273,18 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ITM_melt(
       ITM_melt.ITM_melt = 0.;
     }
     else{
-      ITM_melt.ITM_melt = dt_series / (rho_w * L_m) * (tau_a*(1. - albedo) * q_insol + itm_c + itm_lambda * (Teff ));
+      ITM_melt.ITM_melt = dt_series / (rho_w * L_m) * (tau*(1. - albedo) * q_insol + itm_c + itm_lambda * (Teff ));
     }
   }
   else{
-    ITM_melt.ITM_melt = dt_series / (rho_w * L_m) * (tau_a*(1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15 ));
+    ITM_melt.ITM_melt = dt_series / (rho_w * L_m) * (tau*(1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15 ));
     ITM_melt.T_melt = dt_series / (rho_w * L_m) * itm_lambda * (T - 273.15);
   }
 
 
 
 
-  ITM_melt.I_melt = dt_series / (rho_w * L_m) * (tau_a*(1. - albedo) * q_insol);
+  ITM_melt.I_melt = dt_series / (rho_w * L_m) * (tau*(1. - albedo) * q_insol);
   ITM_melt.c_melt = dt_series / (rho_w * L_m) * itm_c;
 
 
@@ -307,8 +308,8 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
 
   const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water //default 1000 kg m-3
   const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting //default 3.34e5 Joule / kg
-  const double z = surface_elevation;               // surface elevation 
-  const double tau_a = 0.65 +  0.000032 * z;  // transmissivity of the atmosphere, linear fit, plug in values //FIXME parameters in config
+  const double tau_intercept = m_config->get_number("surface.itm.transmissivity_intercept");   // intercept of atmospheric transmissivity linear fit
+  const double tau_slope = m_config->get_number("surface.itm.transmissivity_slope");   // slope of atmospheric transmissivity linear fit
   const double itm_c = m_config->get_number("surface.itm.itm_c");
   const double itm_lambda = m_config->get_number("surface.itm.itm_lambda");
   const double bm_temp    = m_config->get_number("surface.itm.background_melting_temp");
@@ -316,7 +317,8 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
   const bool background_melting = m_config->get_flag("surface.itm.background_melting");
   const double solar_constant = m_config->get_number("surface.itm.solar_constant");
 
-
+  double z = surface_elevation;               // surface elevation 
+  double tau = tau_intercept + tau_slope * z;
 
   const double phi = 17.5 * M_PI / 180.;
 
@@ -336,7 +338,7 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
   double TOA_insol; 
 
 
-  ETIM_melt.transmissivity = tau_a;
+  ETIM_melt.transmissivity = tau;
 
 
 
@@ -367,15 +369,15 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
       ETIM_melt.ITM_melt = 0.;
     }
     else{
-      ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol + itm_c + itm_lambda * (Teff));
+      ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol + itm_c + itm_lambda * (Teff));
     }
   }
   else{
-    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15));
+    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15));
     ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (T - 273.15);
   }
   
-  ETIM_melt.I_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol);
+  ETIM_melt.I_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol);
   ETIM_melt.c_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_c;
 
 
