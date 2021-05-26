@@ -525,8 +525,8 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
 
       // print output in only one (three) cells
       bool print = 0;
-      if ( i == 176 and j == 100) {
-        print = 1;
+      if ( i == 51 and j == 583) { // King George Island
+        print = 0;
       }
 
       // the temperature time series from the AtmosphereModel and its modifiers
@@ -671,9 +671,9 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
           //  no melt over ice-free ocean
           if (mask.ice_free_ocean(i, j)) {
             ETIM_melt.T_melt = 0.; 
-            ETIM_melt.I_melt = 0. ;
+            ETIM_melt.I_melt = 0.;
             ETIM_melt.c_melt = 0.; 
-            ETIM_melt. ITM_melt = 0.; 
+            ETIM_melt.ITM_melt = 0.; 
           }
 
           if (print){
@@ -837,12 +837,14 @@ void TemperatureIndexITM::define_model_state_impl(const File &output) const {
   SurfaceModel::define_model_state_impl(output);
   m_firn_depth.define(output, PISM_DOUBLE);
   m_snow_depth.define(output, PISM_DOUBLE);
+  m_albedo.define(output, PISM_DOUBLE);
 }
 
 void TemperatureIndexITM::write_model_state_impl(const File &output) const {
   SurfaceModel::write_model_state_impl(output);
   m_firn_depth.write(output);
   m_snow_depth.write(output);
+  m_albedo.write(output);
 }
 
 namespace diagnostics {
