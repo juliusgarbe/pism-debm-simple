@@ -2485,12 +2485,6 @@ netcdf pism_config {
     pism_config:surface.itm.itm_lambda_type = "number";
     pism_config:surface.itm.itm_lambda_units = "W m-2 K-1";
 
-    pism_config:surface.itm.method = "daily";
-    pism_config:surface.itm.method_choices = "daily,not_daily,albedo_forcing";
-    pism_config:surface.itm.method_doc = "itm implementation method";
-    pism_config:surface.itm.method_option = "itm_method";
-    pism_config:surface.itm.method_type = "keyword";
-
     pism_config:surface.itm.paleo.enabled = "false";
     pism_config:surface.itm.paleo.enabled_doc = "Use orbital parameters to compute insolation at TOA";
     pism_config:surface.itm.paleo.enabled_option = "itm_paleo";
