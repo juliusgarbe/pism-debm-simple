@@ -70,8 +70,6 @@ ITMMassBalance::ITMMassBalance(Config::ConstPtr config, units::System::Ptr syste
   pdd_threshold_temp = m_config->get_number("surface.pdd.positive_threshold_temp");
   
 
-  //FIXME use itm instead of pdd! 
-
   m_method = "insolation temperature melt";
 }
 
@@ -99,15 +97,15 @@ double ITMMassBalance::CalovGreveIntegrand(double sigma, double TacC) {
 
 
 
-double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtseries, bool print){
+double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtseries){
   const double ice_density = m_config->get_number("constants.ice.density");
   double albedo =  m_config->get_number("surface.itm.albedo_snow");
-  const double albedo_land = m_config->get_number("surface.itm.albedo_land"); //0.2
-  const double albedo_ocean = m_config->get_number("surface.itm.albedo_ocean"); // 0.1;
+  const double albedo_land = m_config->get_number("surface.itm.albedo_land");
+  const double albedo_ocean = m_config->get_number("surface.itm.albedo_ocean");
   // melt has a unit of meters ice equivalent
   // dtseries has a unit of seconds
-  const double albedo_intercept = m_config->get_number("surface.itm.albedo_snow");//0.82; 
-  const double albedo_slope = m_config->get_number("surface.itm.albedo_slope"); //-790; 
+  const double albedo_intercept = m_config->get_number("surface.itm.albedo_snow");
+  const double albedo_slope = m_config->get_number("surface.itm.albedo_slope");
   const double albedo_ice = m_config->get_number("surface.itm.albedo_ice");
 
   if (mask_value == 4){ // mask value for ice free ocean
@@ -117,17 +115,11 @@ double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtser
       albedo =  albedo_land;
   }
   else {
-      albedo = albedo_intercept + albedo_slope * melt * ice_density / (dtseries); //check if this is fine. 
+      albedo = albedo_intercept + albedo_slope * melt * ice_density / (dtseries);
       if (albedo < albedo_ice){
-        albedo = albedo_ice; //0.47;
+        albedo = albedo_ice;
       }
   }
-
-  // if (print){
-  //   const double dt_days = units::convert(m_unit_system, dtseries, "seconds", "days");
-  //   std::cout << "internal time step (days) " <<  dt_days << '\n';
-  // }
-
   return albedo;
 }
 
@@ -145,7 +137,7 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
                                          const double &delta,
                                          const double &distance2,
                                          const double &lat,
-                                         const double &albedo, bool print ) {
+                                         const double &albedo) {
 
   Melt ETIM_melt;
 
@@ -308,7 +300,7 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
                                              double ITM_melt,
                                              double old_firn_depth,
                                              double old_snow_depth,
-                                             double accumulation, bool print) {
+                                             double accumulation) {
 
 
   Changes result;
@@ -322,14 +314,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
     snow_melted     = 0.0,
     excess_melt     = 0.0;
 
-    // FIXME check if itm melt is read in correctly!!!!!
-
-  // if (old_snow_depth > 0){
-  //   std::cout << "initial snow depth " << old_snow_depth << '\n';
-  //   std::cout << "snow depth before accumulation " << snow_depth << '\n';
-  //   std::cout << "accumulation " << accumulation << '\n';
-  //   std::cout << "melt " << ITM_melt << '\n';
-  // }
   assert(thickness >= 0);
 
   // snow depth cannot exceed total thickness
@@ -341,11 +325,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
   // firn depth cannot exceed thickness - snow_depth
   firn_depth = std::min(firn_depth, thickness - snow_depth);
 
-  // if (old_snow_depth > 0){
-  //   std::cout << "thickness = " << thickness << " snow depth = " << snow_depth << '\n';
-  //   std::cout << "firn depth " << firn_depth << '\n';
-  // }
-
   assert(firn_depth >= 0);
 
   double ice_thickness = thickness - snow_depth - firn_depth;
@@ -353,9 +332,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
   assert(ice_thickness >= 0);
 
   snow_depth += accumulation;
-  // if (old_snow_depth > 0){
-  //   std::cout << "snow depth after accumulation " << snow_depth << '\n';
-  // }
   
   if (ITM_melt <= 0.0) {            // The "no melt" case.
     snow_melted = 0.0;
@@ -387,10 +363,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
     ice_created_by_refreeze = 0.0;
 
 
-  // if (old_snow_depth > 0){
-  // std::cout << "snow melted " << snow_melted << '\n';
-  // }
-
   if (refreeze_ice_melt) {
     ice_created_by_refreeze = melt * refreeze_fraction;
   } else {
@@ -400,9 +372,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
 
 
   snow_depth = std::max(snow_depth - snow_melted, 0.0);
-  // if (old_snow_depth > 0){
-  // std::cout << "snow depth after checking " << snow_depth << '\n';
-  // }
   firn_depth = std::max(firn_depth - firn_melted, 0.0);
   // FIXME: need to add snow that hasn't melted, is this correct?
   // firn_depth += (snow_depth - snow_melted);
@@ -418,7 +387,6 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
   result.snow_depth = snow_depth - old_snow_depth;
   result.melt       = melt;
   result.runoff     = runoff;
-  // result.smb        = accumulation - runoff;
   result.smb        = thickness + smb >= 0 ? smb : -thickness;
 
 

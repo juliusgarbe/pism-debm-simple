@@ -54,7 +54,7 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
     m_transmissivity(m_grid, "transmissivity", WITHOUT_GHOSTS),
     m_TOAinsol(m_grid, "TOAinsol", WITHOUT_GHOSTS),
     m_qinsol(m_grid, "qinsol", WITHOUT_GHOSTS) {
-// so 
+
   m_sd_period                  = 0;
 
   m_base_pddStdDev             = m_config->get_number("surface.pdd.std_dev");
@@ -72,13 +72,7 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
 
   std::string method = m_config->get_string("surface.itm.method");
 
-  
-  // FIXME Do I want to include repeatable random process or not? 
-    // if (method == "repeatable_random_process") {
-    // m_mbscheme.reset(new PDDrandMassBalance(m_config, m_sys, PDDrandMassBalance::REPEATABLE));
-    // } else if (method == "random_process") {
-    // m_mbscheme.reset(new PDDrandMassBalance(m_config, m_sys, PDDrandMassBalance::NOT_REPEATABLE));
-  
+    
   if (method == "albedo_forcing"){
     m_mbscheme.reset(new ITMMassBalance(m_config, m_sys)); // FIXME add new instance of ITMMassbalance
   }else if (method == "not_daily"){
@@ -94,27 +88,6 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
   
   std::string sd_file = m_config->get_string("surface.pdd.std_dev.file");
 
-  //   if (sd_file.empty()) {
-    //     m_log->message(2,
-    //                    "  Using constant standard deviation of near-surface temperature.\n");
-    //     //const char msg[40];
-    //     //sprintf(msg, "The standard deviation is %f\n", VARIABLE);
-    //     //m_log->message(2, msg);
-    //     m_log->message(2,
-    //                    "  The standard deviation is %f \n", m_base_pddStdDev);
-    //     m_air_temp_sd->init_constant(m_base_pddStdDev);
-    //     m_log->message(2,
-    //                    "  test test \n");
-    //   } else {
-    //     m_log->message(2,
-    //                    "  Reading standard deviation of near-surface temperature from '%s'...\n",
-    //                    sd_file.c_str());
-
-    //     auto sd_ref_time = m_config->get_number("surface.pdd.std_dev.reference_year", "seconds");
-
-    //     m_air_temp_sd->init(sd_file, m_sd_period, sd_ref_time);
-    //   }
-    // }
 
   if (not sd_file.empty()) {
     int evaluations_per_year = m_config->get_number("input.forcing.evaluations_per_year");
@@ -219,13 +192,6 @@ void TemperatureIndexITM::init_impl(const Geometry &geometry) {
                    "  Computing melt: %s.\n",
                    m_mbscheme->method().c_str());
 
-    // if (m_faustogreve) {
-    //   m_log->message(2,
-    //                  "  Setting PDD parameters from [Faustoetal2009].\n");
-    // } else {
-    //   m_log->message(2,
-    //                  "  Using default PDD parameters.\n");
-    // }
   }
 
   // initialize the spatially-variable air temperature standard deviation
@@ -322,7 +288,9 @@ double TemperatureIndexITM::compute_next_balance_year_start(double time) {
 }
 
 
-bool TemperatureIndexITM::albedo_anomaly_true(double time, int n, bool print ) {
+bool TemperatureIndexITM::albedo_anomaly_true(double time, int n) {
+  // This function is only here to perform darkening experiments, where the albedo over the whole ice sheet is reduced artificially during the summer months.
+
   // compute the time corresponding to the beginning of the next balance year
   double
     anomaly_start_day = m_config->get_number("surface.itm.anomaly_start_day"),
@@ -347,21 +315,17 @@ bool TemperatureIndexITM::albedo_anomaly_true(double time, int n, bool print ) {
   }
 
   if( time >=  anomaly_start and time <= anomaly_end and frequency_true){
-    if (print){
-      std::cout << "freq true " << frequency_true << " time in days " << (time - year_start)/one_day << " \t true \n";
-    }
     return true;
   }
   else{
-    if (print){
-      std::cout << "freq true " << frequency_true << " time in days " << (time - year_start)/one_day << " \t false \n";
-    }    
     return false; 
   }
 }
 
 
 double TemperatureIndexITM::get_distance2(double time){
+  // get the distance between earth and sun
+
   double 
     a0 = 1.000110,
     a1 = 0.034221,
@@ -374,11 +338,13 @@ double TemperatureIndexITM::get_distance2(double time){
   double t = 2. * M_PI * m_grid->ctx()->time()->year_fraction(time);
   distance2 = a0 + b0 + a1 * cos(t) + b1 * sin(t) + a2 * cos(2. * t) + b2 * sin(2. * t);
   // Equation 2.2.9 from Liou (2002)
-  return distance2; //FIXME
+  return distance2;
 }
 
 
-double TemperatureIndexITM::get_delta(double time){ //FIXME
+double TemperatureIndexITM::get_delta(double time){
+  // get the earth declination delta
+
   double 
     a0 = 0.006918,
     a1 = -0.399912,
@@ -393,12 +359,6 @@ double TemperatureIndexITM::get_delta(double time){ //FIXME
   double t = 2. * M_PI * m_grid->ctx()->time()->year_fraction(time);
   delta = a0 + b0 + a1 * cos(t) + b1 * sin(t) + a2 * cos(2. * t) + b2 * sin(2. * t) + a3 * cos(3. * t) + b3 * sin(3. * t);
   // Equation 2.2.10 from Liou (2002)
-
-
-  // this is just to test something. delete later
-  // int time_in_days  = time / (24. * 60. * 60.);
-  // int day_of_year = time_in_days % 365 ;
-  // delta = M_PI / 180. * (-23.44) * cos(2 * M_PI / 365. * (double(day_of_year) + 10.));
   return delta;
 }
 
@@ -523,11 +483,6 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
     for (Points p(*m_grid); p; p.next()) {
       const int i = p.i(), j = p.j();
 
-      // print output in only one (three) cells
-      bool print = 0;
-      if ( i == 51 and j == 583) { // King George Island
-        print = 0;
-      }
 
       // the temperature time series from the AtmosphereModel and its modifiers
       m_atmosphere->temp_time_series(i, j, T);
@@ -604,9 +559,6 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
           albedo_loc = m_albedo(i,j);
 
 
-
-        // double surfelev = (*surface_altitude)(i, j);
-
         // accumulation, melt, runoff over this time-step
         double
           A   = 0.0,
@@ -640,18 +592,10 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
      
           if (force_albedo){
 
-            if (albedo_anomaly_true(ts[k],0, print)){
+            if (albedo_anomaly_true(ts[k],0)){
               albedo_loc = m_config->get_number("surface.itm.anomaly_value");
             }
           }
-
-
-          // This is not the best way to get the day of the year, ignores possibilities for different calendars! 
-          // int time_in_days  = ts[k] / (24. * 60. * 60.);
-          // int day_of_year = time_in_days % 365 ;
-
-          // Same here. Although the representation of delta is quite okay otherwise. 
-          // double delta = M_PI / 180. * (-23.44) * cos(2 * M_PI / 365. * (double(day_of_year) + 10.))
 
           
           double 
@@ -666,7 +610,7 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
           ETIM_melt = m_mbscheme->calculate_ETIM_melt(dtseries, S[k], T[k], surfelev,
                                          delta, distance2,
                                          lat * M_PI / 180.,
-                                         albedo_loc, print);
+                                         albedo_loc);
           
           //  no melt over ice-free ocean
           if (mask.ice_free_ocean(i, j)) {
@@ -676,22 +620,15 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
             ETIM_melt.ITM_melt = 0.; 
           }
 
-          if (print){
-            std::cout << "albedo value " << albedo_loc << "\n";
-            std::cout << "melt value " << ETIM_melt.ITM_melt << " insolation melt " << ETIM_melt.I_melt<< "\n";
-          }
-          
-
-
 
           
           changes =  m_mbscheme->step(m_melt_conversion_factor, m_refreeze_fraction, ice,
-            ETIM_melt.ITM_melt, firn, snow, accumulation, 0);
+            ETIM_melt.ITM_melt, firn, snow, accumulation);
 
-          albedo_loc = m_mbscheme->get_albedo_melt(changes.melt,  mask(i, j), dtseries, print);
+          albedo_loc = m_mbscheme->get_albedo_melt(changes.melt,  mask(i, j), dtseries);
 
           if (force_albedo){
-            if (albedo_anomaly_true(ts[k],0, print)){
+            if (albedo_anomaly_true(ts[k],0)){
               albedo_loc = m_config->get_number("surface.itm.anomaly_value");
             }
           }
@@ -732,10 +669,6 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
         m_TOAinsol(i,j)    = Ti / N;
         m_qinsol(i,j)    = Qi / N;
 
-
-        if (print){
-          std::cout << "albedo_loc " << albedo_loc << " accumulated albedo " << Al << " average albedo " << Al/N << " albedo on grid " << m_albedo(i,j) <<'\n';
-        }
 
         // set melt terms at this point, converting
         // from "meters, ice equivalent" to "kg / m^2"        

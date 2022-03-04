@@ -61,7 +61,7 @@ public:
 
   virtual unsigned int get_timeseries_length(double dt) = 0;
 
-  virtual double get_albedo_melt(double melt, int mask_value, double dtseries, bool print) = 0;
+  virtual double get_albedo_melt(double melt, int mask_value, double dtseries) = 0;
 
   /*! Remove rain from precipitation. */
   virtual void get_snow_accumulationITM(const std::vector<double> &T,
@@ -106,7 +106,7 @@ public:
                                          const double &delta,
                                          const double &distance2,
                                          const double &lat,
-                                         const double &albedo, bool print ) = 0;
+                                         const double &albedo) = 0;
 
 
   /** 
@@ -125,7 +125,7 @@ public:
                        double ITM_melt,
                        double old_firn_depth,
                        double old_snow_depth,
-                       double accumulation, bool print ) = 0;
+                       double accumulation) = 0;
 
   virtual double get_refreeze_fraction(const double &T)  = 0;
 
@@ -152,7 +152,7 @@ public:
 
   virtual unsigned int get_timeseries_length(double dt);
 
-  virtual double get_albedo_melt(double melt, int mask_value, double dtseries, bool print);
+  virtual double get_albedo_melt(double melt, int mask_value, double dtseries);
 
   virtual double get_refreeze_fraction(const double &T);
   
@@ -163,7 +163,7 @@ public:
                                          const double &delta,
                                          const double &distance2,
                                          const double &lat,
-                                         const double &albedo, bool print );
+                                         const double &albedo);
 
   virtual void get_snow_accumulationITM(const std::vector<double> &T,
                                      std::vector<double> &precip_rate);
@@ -174,7 +174,7 @@ public:
                        double ITM_melt,
                        double firn_depth,
                        double snow_depth,
-                       double accumulation, bool print);
+                       double accumulation);
 
 protected:
 
