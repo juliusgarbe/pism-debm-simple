@@ -64,6 +64,21 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
   m_refreeze_fraction          = m_config->get_number("surface.itm.refreeze");
 
 
+  m_albedo_input_set = m_config-> get_flag("surface.itm.albedo_input_set");
+  if (m_albedo_input_set) {
+
+    int evaluations_per_year = m_config->get_number("input.forcing.evaluations_per_year");
+    int max_buffer_size = (unsigned int) m_config->get_number("input.forcing.buffer_size");
+    std::string albedo_file = m_config->get_string("surface.itm.albedo_input_file");
+    File file(m_grid->com, albedo_file, PISM_NETCDF3, PISM_READONLY);
+    m_input_albedo = IceModelVec2T::ForcingField(m_grid, file,
+                                                "albedo", "",
+                                                max_buffer_size,
+                                                evaluations_per_year,
+                                                1, //FIXME here should be the period
+                                                LINEAR);  
+   }
+
 
   options::Integer period("-pdd_sd_period",
                           "Length of the standard deviation data period in years", 0);
@@ -244,6 +259,14 @@ void TemperatureIndexITM::init_impl(const Geometry &geometry) {
   if (force_albedo) m_log->message(2, 
                                   " Albedo forcing sets summer albedo values to lower value\n");
   // finish up
+
+  if (m_albedo_input_set) {
+                    m_log->message(2,
+                                   " Albedo is read in from input");
+                    std::string albedo_file = m_config->get_string("surface.itm.albedo_input_file");
+                    m_input_albedo->init(albedo_file, 1, 0);
+  }
+
   {
     m_next_balance_year_start = compute_next_balance_year_start(m_grid->ctx()->time()->current());
 
@@ -258,7 +281,7 @@ MaxTimestep TemperatureIndexITM::max_timestep_impl(double my_t) const {
 }
 
 double TemperatureIndexITM::compute_next_balance_year_start(double time) {
-  // compute the time corresponding to the beginning of the next balance year
+  // compute the time corresponding to the beginning of the darkening
   double
     balance_year_start_day = m_config->get_number("surface.pdd.balance_year_start_day"),
     one_day                = units::convert(m_sys, 1.0, "days", "seconds"),
@@ -416,7 +439,7 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
   int N = m_mbscheme->get_timeseries_length(dt);
 
   const double dtseries = dt / N;
-  std::vector<double> ts(N), T(N), S(N), P(N);
+  std::vector<double> ts(N), T(N), S(N), P(N), Alb(N);
   LocalMassBalanceITM::Melt  ETIM_melt;
   for (int k = 0; k < N; ++k) {
     ts[k] = t + k * dtseries;
@@ -436,6 +459,10 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
                               latitude  = &geometry.latitude; 
   const IceModelVec2S *surface_altitude  = &geometry.ice_surface_elevation;               
 
+  if (m_albedo_input_set) {
+    m_input_albedo->update(t, dt);
+    m_input_albedo->init_interpolation(ts);
+  }
 
   IceModelVec::AccessList list{&mask, &H, m_air_temp_sd.get(), &m_mass_flux,
       &m_firn_depth, &m_snow_depth,  m_accumulation.get(), m_melt.get(), m_runoff.get(),
@@ -444,6 +471,7 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
   list.add(*latitude);
   list.add(*surface_altitude);
 
+  if(m_albedo_input_set) list.add( *m_input_albedo.get());
 
   const double
     sigmalapserate = m_config->get_number("surface.pdd.std_dev_lapse_lat_rate"),
@@ -496,6 +524,10 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
         for (int k = 0; k < N; ++k) {
           S[k] = tmp;
         }
+      }
+
+      if (m_albedo_input_set){
+        m_input_albedo->interp(i,j,Alb);
       }
 
 
@@ -581,6 +613,7 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
             }
           }
 
+          if (m_albedo_input_set) albedo_loc = Alb[k];
           
           double 
             delta =  get_delta(ts[k]),
@@ -609,7 +642,9 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
           changes =  m_mbscheme->step(m_refreeze_fraction, ice,
             ETIM_melt.ITM_melt, firn, snow, accumulation);
 
-          albedo_loc = m_mbscheme->get_albedo_melt(changes.melt,  mask(i, j), dtseries);
+          if (!m_albedo_input_set) {
+            albedo_loc = m_mbscheme->get_albedo_melt(changes.melt,  mask(i, j), dtseries);
+          }
 
           if (force_albedo){
             if (albedo_anomaly_true(ts[k],0)){

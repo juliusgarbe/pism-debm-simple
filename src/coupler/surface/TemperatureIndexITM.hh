@@ -137,6 +137,9 @@ protected:
   //! albedo field
   IceModelVec2S m_albedo;
 
+  //! if albedo is given as input field
+  IceModelVec2T::Ptr m_input_albedo;
+
   //! transmissivity field
   IceModelVec2S m_transmissivity;
 
@@ -146,6 +149,8 @@ protected:
   //! q insol field
   IceModelVec2S m_qinsol;
 
+  bool m_albedo_input_set;
+  
   bool m_sd_use_param, m_sd_file_set;
   int m_sd_period;
   double m_sd_param_a, m_sd_param_b;
