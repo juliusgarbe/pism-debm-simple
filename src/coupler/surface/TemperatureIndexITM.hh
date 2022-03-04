@@ -94,7 +94,6 @@ protected:
   //! holds degree-day factors in location-independent case
   // LocalITM::DegreeDayFactors m_base_ddf;
 
-  double m_melt_conversion_factor;
   double m_refreeze_fraction;
 
 

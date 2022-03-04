@@ -61,7 +61,6 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
   m_sd_use_param               = m_config->get_flag("surface.pdd.std_dev_use_param");
   m_sd_param_a                 = m_config->get_number("surface.pdd.std_dev_param_a");
   m_sd_param_b                 = m_config->get_number("surface.pdd.std_dev_param_b");
-  m_melt_conversion_factor     = m_config->get_number("surface.itm.melt_conversion_factor");
   m_refreeze_fraction          = m_config->get_number("surface.itm.refreeze");
 
 
@@ -622,7 +621,7 @@ void TemperatureIndexITM::update_impl(const Geometry &geometry, double t, double
 
 
           
-          changes =  m_mbscheme->step(m_melt_conversion_factor, m_refreeze_fraction, ice,
+          changes =  m_mbscheme->step(m_refreeze_fraction, ice,
             ETIM_melt.ITM_melt, firn, snow, accumulation);
 
           albedo_loc = m_mbscheme->get_albedo_melt(changes.melt,  mask(i, j), dtseries);

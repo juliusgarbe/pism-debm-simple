@@ -2485,11 +2485,6 @@ netcdf pism_config {
     pism_config:surface.itm.itm_lambda_type = "number";
     pism_config:surface.itm.itm_lambda_units = "W m-2 K-1";
 
-    pism_config:surface.itm.melt_conversion_factor = 1.;
-    pism_config:surface.itm.melt_conversion_factor_doc = "conversion factor between melt of snow and ice in itm scheme";
-    pism_config:surface.itm.melt_conversion_factor_type = "number";
-    pism_config:surface.itm.melt_conversion_factor_units = "1";
-
     pism_config:surface.itm.method = "daily";
     pism_config:surface.itm.method_choices = "daily,not_daily,albedo_forcing";
     pism_config:surface.itm.method_doc = "itm implementation method";

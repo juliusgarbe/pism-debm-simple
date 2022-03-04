@@ -112,15 +112,14 @@ public:
   /** 
    * Take a step of the ITM model.
    *
-   * @param[in] melt_conversion_factor , refreeze_fraction
+   * @param[in] refreeze_fraction
    * @param[in] albedo
    * @param[in] melt
    * @param[in] old_firn_depth firn depth [ice equivalent meters]
    * @param[in] old_snow_depth snow depth [ice equivalent meters]
    * @param[in] accumulation total solid (snow) accumulation during the time-step [ice equivalent meters]
    */
-  virtual Changes step(const double &melt_conversion_factor,
-                       const double &refreeze_fraction,
+  virtual Changes step(const double &refreeze_fraction,
                        double thickness,
                        double ITM_melt,
                        double old_firn_depth,
@@ -168,8 +167,7 @@ public:
   virtual void get_snow_accumulationITM(const std::vector<double> &T,
                                      std::vector<double> &precip_rate);
 
-  virtual Changes step(const double &melt_conversion_factor,
-                       const double &refreeze_fraction,
+  virtual Changes step(const double &refreeze_fraction,
                        double thickness,
                        double ITM_melt,
                        double firn_depth,

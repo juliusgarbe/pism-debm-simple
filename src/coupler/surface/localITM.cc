@@ -124,11 +124,61 @@ double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtser
 }
 
 
+double ITMMassBalance::get_tau_a(double surface_elevation){
+   const double tau_a_slope = m_config->get_number("surface.itm.tau_a_slope");
+   const double tau_a_intercept = m_config->get_number("surface.itm.tau_a_intercept");
+   return tau_a_intercept +  tau_a_slope * surface_elevation;  // transmissivity of the atmosphere, linear fit
+ }
 
 
-/*
-compute diurnal melt scheme  by equation (6) by Uta Krebs-Kanzow, The Cryosphere, 2018
-*/
+ double ITMMassBalance::get_h_phi(const double &phi, const double &lat, const double &delta){
+   // calculate the hour angle at which the sun reaches phi (for melting period during the day)
+   double input_h_phi = ( sin(phi) - sin(lat) * sin(delta)) / (cos(lat) * cos(delta));
+   double input_h_phi_clipped = std::max(-1., std::min(input_h_phi, 1.));
+   return acos(input_h_phi_clipped);
+ }
+
+
+ double ITMMassBalance::get_q_insol(
+   const double &solar_constant,
+   const double &distance2, 
+   const double &h_phi, 
+   const double &lat, 
+   const double &delta){
+   if (h_phi == 0){
+     return 0. ; 
+   }
+   else {
+     return solar_constant * distance2 * (h_phi * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h_phi))  / h_phi;
+   }
+ }
+
+ double ITMMassBalance::get_TOA_insol(
+   const double &solar_constant,
+   const double &distance2, 
+   const double &h0, 
+   const double &lat, 
+   const double &delta){
+   if (h0 == 0){
+     return 0. ; 
+   }
+   else {
+     return solar_constant * distance2 * (h0 * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h0))  / M_PI;
+   }
+ }
+
+
+
+//! 
+/* compute diurnal melt scheme  by equation (6) by Uta Krebs-Kanzow et al., The Cryosphere, 2018
+ * @param dt_series length of the step for the time-series
+ * @param T air temperature at time [k]
+ * @param insolation at time [k]
+ * @param surface_elevation
+ * @param albedo which was should be figured by get_albedo (?)
+ * @param[out] melt pointer to a pre-allocated array with N-1 elements
+ * output in mm water equivalent
+ */
 
 ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
                                          const double &S,
@@ -141,78 +191,43 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
 
   Melt ETIM_melt;
 
-  const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water //default 1000 kg m-3
-  const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting //default 3.34e5 Joule / kg
-  const double tau_intercept = m_config->get_number("surface.itm.transmissivity_intercept");   // intercept of atmospheric transmissivity linear fit
-  const double tau_slope = m_config->get_number("surface.itm.transmissivity_slope");   // slope of atmospheric transmissivity linear fit
+  const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water
+  const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting
+  const double tau_a = get_tau_a(surface_elevation);
   const double itm_c = m_config->get_number("surface.itm.itm_c");
   const double itm_lambda = m_config->get_number("surface.itm.itm_lambda");
-  const double bm_temp    = m_config->get_number("surface.itm.background_melting_temp");
-  // if background melting is true, use effective pdd temperatures and do not allow melting below background meltin temp. 
-  const bool background_melting = m_config->get_flag("surface.itm.background_melting");
+  const double bm_temp    = m_config->get_number("surface.itm.background_melting_temp"); // do not allow melting below this temp
   const double solar_constant = m_config->get_number("surface.itm.solar_constant");
 
-  double z = surface_elevation;               // surface elevation 
-  double tau = tau_intercept + tau_slope * z;
+  const double phi = m_config->get_number("surface.itm.phi") * M_PI / 180.; 
 
-  const double phi = 17.5 * M_PI / 180.;
-
-  // calculate the hour angle at which the sun reaches phi (for melting period during the day)
-  double input_h_phi = ( sin(phi) - sin(lat) * sin(delta)) / (cos(lat) * cos(delta));
-  double input_h_phi_clipped = std::max(-1., std::min(input_h_phi, 1.));
-  double h_phi = acos(input_h_phi_clipped);
-  
-  // calculate hour angle of sunrise and sunset, so that the diagnostic variable TOA insol can be written
-  double input_h0 = (  - sin(lat) * sin(delta)) / (cos(lat) * cos(delta));
-  double input_h0_clipped = std::max(-1., std::min(input_h0, 1.));
-  double h0 = acos(input_h0_clipped);
-
+  double h_phi = get_h_phi(phi, lat, delta);
+  double h0 = get_h_phi(0, lat, delta);
 
   double quotient_delta_t =  h_phi /M_PI ;
-  double q_insol;
-  double TOA_insol; 
 
+  double q_insol = get_q_insol(solar_constant, distance2, h_phi, lat, delta);
+  double TOA_insol = get_TOA_insol(solar_constant, distance2, h0, lat, delta); 
 
-  ETIM_melt.transmissivity = tau;
-
-
-
-  if (h_phi == 0. ){
-    q_insol = 0;
-    TOA_insol = 0; 
-  }
-  else{
-    q_insol = solar_constant * distance2 * (h_phi * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h_phi))  / h_phi;
-    TOA_insol = solar_constant * distance2 * (h0 * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h0))  / M_PI;
-  }
-  
+  ETIM_melt.transmissivity = tau_a;  
   ETIM_melt.TOA_insol = TOA_insol;
   ETIM_melt.q_insol = q_insol; 
 
   assert(dt_series > 0.0);
   double Teff = 0;
-  if (background_melting){
-    Teff = CalovGreveIntegrand(S, T - pdd_threshold_temp);
-    if (Teff < 1.e-4){ Teff = 0;}
+  Teff = CalovGreveIntegrand(S, T - pdd_threshold_temp);
+  if (Teff < 1.e-4){ Teff = 0;}
 
-    ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (Teff);
-    
-    if (T < bm_temp){
-      ETIM_melt.T_melt = 0.;
-      ETIM_melt.I_melt = 0.;
-      ETIM_melt.c_melt = 0.;
+  ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (Teff);
+
+  if (T < bm_temp){
       ETIM_melt.ITM_melt = 0.;
-    }
-    else{
-      ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol + itm_c + itm_lambda * (Teff));
-    }
   }
   else{
-    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol + itm_c + itm_lambda * (T - 273.15));
-    ETIM_melt.T_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_lambda * (T - 273.15);
+    ETIM_melt.ITM_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol + itm_c + itm_lambda * (Teff));
   }
   
-  ETIM_melt.I_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau * (1. - albedo) * q_insol);
+  ETIM_melt.I_melt = quotient_delta_t * dt_series / (rho_w * L_m) * (tau_a * (1. - albedo) * q_insol);
   ETIM_melt.c_melt = quotient_delta_t * dt_series / (rho_w * L_m) * itm_c;
 
 
@@ -279,9 +294,6 @@ double ITMMassBalance::get_refreeze_fraction(const double &T) {
 //! \brief Compute the surface mass balance at a location from the amount of 
 //! melted snow and the accumulation amount in a time interval.
 /*!
- * This is a ITM scheme. The input parameter `melt_conversion_factor` is a conversion between
- * snow melting and ice melting per time period.
- *
  * `accumulation` has units "meter / second".
  *
  * - a fraction of the melted snow and ice refreezes, conceptualized
@@ -294,8 +306,7 @@ double ITMMassBalance::get_refreeze_fraction(const double &T) {
  * The scheme here came from EISMINT-Greenland [\ref RitzEISMINT], but
  * is influenced by R. Hock (personal communication).
  */
-ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_factor,
-                                             const double &refreeze_fraction,
+ITMMassBalance::Changes ITMMassBalance::step(const double &refreeze_fraction,
                                              double thickness,
                                              double ITM_melt,
                                              double old_firn_depth,
@@ -358,7 +369,7 @@ ITMMassBalance::Changes ITMMassBalance::step(const double &melt_conversion_facto
   }
 
   double
-    ice_melted              = excess_melt * melt_conversion_factor,
+    ice_melted              = excess_melt,
     melt                    = snow_melted + firn_melted + ice_melted,
     ice_created_by_refreeze = 0.0;
 
