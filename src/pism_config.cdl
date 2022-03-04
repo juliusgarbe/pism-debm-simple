@@ -2465,10 +2465,6 @@ netcdf pism_config {
     pism_config:surface.itm.anomaly_value_type = "number";
     pism_config:surface.itm.anomaly_value_units = "";
 
-    pism_config:surface.itm.background_melting = "yes";
-    pism_config:surface.itm.background_melting_doc = "if yes, that we use pdd positive temperatures instead of just air temperatures in the itm equation";
-    pism_config:surface.itm.background_melting_type = "flag";
-
     pism_config:surface.itm.background_melting_temp = 266.65;
     pism_config:surface.itm.background_melting_temp_doc = "threshold temperature below which no melting occurs";
     pism_config:surface.itm.background_melting_temp_type = "number";
