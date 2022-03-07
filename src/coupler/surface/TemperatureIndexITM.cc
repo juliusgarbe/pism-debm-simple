@@ -39,7 +39,7 @@
 namespace pism {
 namespace surface {
 
-///// PISM surface model implementing a PDD scheme.
+///// PISM surface model implementing a dEBM scheme.
 
 TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
                                    std::shared_ptr<atmosphere::AtmosphereModel> input)
@@ -75,12 +75,12 @@ TemperatureIndexITM::TemperatureIndexITM(IceGrid::ConstPtr g,
                                                 "albedo", "",
                                                 max_buffer_size,
                                                 evaluations_per_year,
-                                                1, //FIXME here should be the period
+                                                1, //FIXME here should be the period, for now only period of one year
                                                 LINEAR);  
    }
 
 
-  options::Integer period("-pdd_sd_period",
+  options::Integer period("-pdd_sd_period",  //FIXME create option of itm sd period
                           "Length of the standard deviation data period in years", 0);
   m_sd_period = period;
 
@@ -252,8 +252,8 @@ void TemperatureIndexITM::init_impl(const Geometry &geometry) {
   }
 
   {
-    regrid("PDD surface model", m_snow_depth);
-    regrid("PDD surface model", m_firn_depth);
+    regrid("ITM surface model", m_snow_depth);
+    regrid("ITM surface model", m_firn_depth);
   }
   const bool force_albedo = m_config->get_flag("surface.itm.anomaly");  
   if (force_albedo) m_log->message(2, 
@@ -281,7 +281,7 @@ MaxTimestep TemperatureIndexITM::max_timestep_impl(double my_t) const {
 }
 
 double TemperatureIndexITM::compute_next_balance_year_start(double time) {
-  // compute the time corresponding to the beginning of the darkening
+  // compute the time corresponding to the beginning of the next mass balance year
   double
     balance_year_start_day = m_config->get_number("surface.pdd.balance_year_start_day"),
     one_day                = units::convert(m_sys, 1.0, "days", "seconds"),
@@ -298,7 +298,7 @@ double TemperatureIndexITM::compute_next_balance_year_start(double time) {
 bool TemperatureIndexITM::albedo_anomaly_true(double time, int n) {
   // This function is only here to perform darkening experiments, where the albedo over the whole ice sheet is reduced artificially during the summer months.
 
-  // compute the time corresponding to the beginning of the next balance year
+  // compute the time corresponding to the beginning of the darkening
   double
     anomaly_start_day = m_config->get_number("surface.itm.anomaly_start_day"),
     anomaly_end_day = m_config->get_number("surface.itm.anomaly_end_day"),
@@ -396,6 +396,8 @@ double TemperatureIndexITM::get_delta_paleo(double time){
 
 
 double TemperatureIndexITM::get_lambda_paleo(double time){
+  // estimates solar longitude at current time in the year 
+  // Method is using an approximation from :cite:`Berger_1978` section 3 (lambda = 0 at spring equinox).
   // for now the orbital parameters are as config parameters, but it would be best, if I could read in a time series
   double 
     epsilon_deg = m_config->get_number("surface.itm.paleo.obliquity"), 

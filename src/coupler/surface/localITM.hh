@@ -137,11 +137,9 @@ protected:
 };
 
 
-//! A ITM implementation which computes the local mass balance based on an expectation integral.
+//! A dEBM implementation
 /*!
-  The expected number of positive degree days is computed by an integral in \ref CalovGreve05.
-
-  Uses degree day factors which are location-independent.
+  after Krebs-Kanzow et al. (2018)
 */
 class ITMMassBalance : public LocalMassBalanceITM {
 
