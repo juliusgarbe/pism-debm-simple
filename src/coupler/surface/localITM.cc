@@ -124,6 +124,49 @@ double ITMMassBalance::get_albedo_melt(double melt, int mask_value, double dtser
 }
 
 
+double ITMMassBalance::get_tau_a(double surface_elevation){
+   const double tau_a_slope = m_config->get_number("surface.itm.tau_a_slope");
+   const double tau_a_intercept = m_config->get_number("surface.itm.tau_a_intercept");
+   return tau_a_intercept +  tau_a_slope * surface_elevation;  // transmissivity of the atmosphere, linear fit
+ }
+
+
+ double ITMMassBalance::get_h_phi(const double &phi, const double &lat, const double &delta){
+   // calculate the hour angle at which the sun reaches phi (for melting period during the day)
+   double input_h_phi = ( sin(phi) - sin(lat) * sin(delta)) / (cos(lat) * cos(delta));
+   double input_h_phi_clipped = std::max(-1., std::min(input_h_phi, 1.));
+   return acos(input_h_phi_clipped);
+ }
+
+
+ double ITMMassBalance::get_q_insol(
+   const double &solar_constant,
+   const double &distance2, 
+   const double &h_phi, 
+   const double &lat, 
+   const double &delta){
+   if (h_phi == 0){
+     return 0. ; 
+   }
+   else {
+     return solar_constant * distance2 * (h_phi * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h_phi))  / h_phi;
+   }
+ }
+
+ double ITMMassBalance::get_TOA_insol(
+   const double &solar_constant,
+   const double &distance2, 
+   const double &h0, 
+   const double &lat, 
+   const double &delta){
+   if (h0 == 0){
+     return 0. ; 
+   }
+   else {
+     return solar_constant * distance2 * (h0 * sin(lat) * sin(delta) + cos(lat) * cos(delta) * sin(h0))  / M_PI;
+   }
+ }
+
 
 
 //! 
@@ -150,8 +193,7 @@ ITMMassBalance::Melt ITMMassBalance::calculate_ETIM_melt(double dt_series,
 
   const double rho_w = m_config->get_number("constants.fresh_water.density");    // mass density of water
   const double L_m = m_config->get_number("constants.fresh_water.latent_heat_of_fusion");      // latent heat of ice melting
-  const double tau_intercept = m_config->get_number("surface.itm.transmissivity_intercept");   // intercept of atmospheric transmissivity linear fit
-  const double tau_slope = m_config->get_number("surface.itm.transmissivity_slope");   // slope of atmospheric transmissivity linear fit
+  const double tau_a = get_tau_a(surface_elevation);
   const double itm_c = m_config->get_number("surface.itm.itm_c");
   const double itm_lambda = m_config->get_number("surface.itm.itm_lambda");
   const double bm_temp    = m_config->get_number("surface.itm.background_melting_temp"); // do not allow melting below this temp

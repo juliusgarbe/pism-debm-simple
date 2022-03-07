@@ -172,6 +172,24 @@ public:
                        double snow_depth,
                        double accumulation);
 
+  virtual double get_tau_a(double surface_elevation);  
+
+  virtual double get_h_phi(const double &phi,
+                           const double &lat,
+                           const double &delta);
+
+  virtual double get_q_insol(const double &solar_constant,
+                             const double &distance2,
+                             const double &h_phi,
+                             const double &lat,
+                             const double &delta);
+
+  virtual double get_TOA_insol(const double &solar_constant,
+                               const double &distance2,
+                               const double &h0,
+                               const double &lat,
+                               const double &delta);
+
 protected:
 
   double CalovGreveIntegrand(double sigma, double TacC);

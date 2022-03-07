@@ -2513,6 +2513,11 @@ netcdf pism_config {
     pism_config:surface.itm.paleo.long_peri_type = "number";
     pism_config:surface.itm.paleo.long_peri_units = "degree";
 
+    pism_config:surface.itm.phi =  17.5;
+    pism_config:surface.itm.phi_doc = "minimum solar elevation angle above which melt is posisble. See Equation (9) by Uta Krebs-Kanzow et al., The Cryosphere, 2018"; 
+    pism_config:surface.itm.phi_type = "number";
+    pism_config:surface.itm.phi_units = "degree";   
+
     pism_config:surface.itm.refreeze = 0.6;
     pism_config:surface.itm.refreeze_doc = "EISMINT-Greenland value :cite:`RitzEISMINT`";
     pism_config:surface.itm.refreeze_type = "number";
@@ -2528,15 +2533,15 @@ netcdf pism_config {
     pism_config:surface.itm.solar_constant_type = "number";
     pism_config:surface.itm.solar_constant_units = "W m-2";
 
-    pism_config:surface.itm.transmissivity_intercept = 0.57;
-    pism_config:surface.itm.transmissivity_intercept_doc = "intercept in transmissivity parametrization";
-    pism_config:surface.itm.transmissivity_intercept_type = "number";
-    pism_config:surface.itm.transmissivity_intercept_units = "";
+    pism_config:surface.itm.tau_a_intercept = 0.57;
+    pism_config:surface.itm.tau_a_intercept_doc = "intercept in transmissivity parametrization";
+    pism_config:surface.itm.tau_a_intercept_type = "number";
+    pism_config:surface.itm.tau_a_intercept_units = "";
 
-    pism_config:surface.itm.transmissivity_slope = 0.000037;
-    pism_config:surface.itm.transmissivity_slope_doc = "slope in transmissivity parametrization";
-    pism_config:surface.itm.transmissivity_slope_type = "number";
-    pism_config:surface.itm.transmissivity_slope_units = "m-1";
+    pism_config:surface.itm.tau_a_slope = 0.000037;
+    pism_config:surface.itm.tau_a_slope_doc = "slope in transmissivity parametrization";
+    pism_config:surface.itm.tau_a_slope_type = "number";
+    pism_config:surface.itm.tau_a_slope_units = "m-1";
 
     pism_config:surface.models = "given";
     pism_config:surface.models_doc = "Comma-separated list of surface models and modifiers.";
